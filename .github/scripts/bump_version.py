@@ -11,7 +11,7 @@ This script:
 
 Environment variables expected:
 - GITHUB_EVENT_PATH: Path to GitHub event JSON
-- GH_TOKEN: GitHub token for pushing
+- GITHUB_TOKEN: GitHub token for pushing
 - GITHUB_REPOSITORY: Repository name (owner/repo)
 """
 
@@ -266,10 +266,10 @@ def main():
     run_command(["git", "add", str(pyproject_path)])
     run_command(["git", "commit", "-m", commit_message])
     
-    # Push using GH_TOKEN
-    token = os.environ.get("GH_TOKEN")
+    # Push using GITHUB_TOKEN
+    token = os.environ.get("GITHUB_TOKEN")
     if not token:
-        print("Error: GH_TOKEN not set")
+        print("Error: GITHUB_TOKEN not set")
         sys.exit(1)
     
     repo = os.environ.get("GITHUB_REPOSITORY")
