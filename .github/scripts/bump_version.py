@@ -23,9 +23,10 @@ import sys
 from pathlib import Path
 
 try:
+    # Python 3.11+ has tomllib in standard library
     import tomllib
 except ImportError:
-    # Python < 3.11 fallback
+    # Python < 3.11: use tomli (installed via pip)
     import tomli as tomllib
 
 

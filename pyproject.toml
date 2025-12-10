@@ -8,7 +8,10 @@ version = "0.1.0"
 description = "Automatic configuration planner for vLLM - Eliminate the guesswork of configuring vLLM by automatically determining optimal parameters"
 readme = "README.md"
 authors = [
-    {name = "Benaya Trabelsi", email = "benaya@example.com"}
+    {name = "Benaya Trabelsi"}
+]
+maintainers = [
+    {name = "Benaya Trabelsi"}
 ]
 license = {text = "MIT"}
 requires-python = ">=3.10"
