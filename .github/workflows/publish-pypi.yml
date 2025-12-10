@@ -1,5 +1,10 @@
 name: Publish to PyPI
 
+# This workflow triggers on:
+# 1. Direct pushes to master (e.g., hotfixes)
+# 2. When a PR is merged to master
+# Note: The bump_version.py script includes [skip ci] in its commit to prevent
+# infinite loops. GitHub Actions honors [skip ci] and won't trigger on those commits.
 on:
   push:
     branches:

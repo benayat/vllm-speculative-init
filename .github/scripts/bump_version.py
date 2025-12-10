@@ -277,8 +277,17 @@ def main():
         sys.exit(1)
     
     # Push with authentication
+    # Get the current branch name
+    branch_result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    current_branch = branch_result.stdout.strip()
+    
     push_url = f"https://x-access-token:{token}@github.com/{repo}.git"
-    run_command(["git", "push", push_url, "HEAD:master"])
+    run_command(["git", "push", push_url, f"HEAD:{current_branch}"])
     
     print(f"Successfully bumped version to {new_version}")
 

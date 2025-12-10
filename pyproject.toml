@@ -34,6 +34,5 @@ Homepage = "https://github.com/benayat/vllm-speculative-init"
 Repository = "https://github.com/benayat/vllm-speculative-init"
 Issues = "https://github.com/benayat/vllm-speculative-init/issues"
 
-[tool.setuptools]
-packages = ["vllm_autoconfig"]
-package-dir = {"" = "src"}
+[tool.setuptools.packages.find]
+where = ["src"]
