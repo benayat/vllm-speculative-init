@@ -186,7 +186,7 @@ If you use vllm-autoconfig in your research or production systems, please cite:
 @software{vllm_speculative_autoconfig,
   title = {vllm-autoconfig: Automatic Configuration Planning for vLLM},
   author = {Benaya Trabelsi},
-  year = {2024},
+  year = {2025},
   url = {https://github.com:benayat/vllm-speculative-init}
 }
 ```

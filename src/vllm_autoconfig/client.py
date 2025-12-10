@@ -17,6 +17,7 @@ class SamplingConfig:
     temperature: float = 0.0
     top_p: float = 1.0
     max_tokens: int = 32
+    n: int = 1
     stop: Optional[List[str]] = None
 
 
@@ -181,6 +182,32 @@ class AutoVLLMClient:
             # Wrapper doesn't like batched call signature -> encode one-by-one
             return [self._TokensPrompt(prompt_token_ids=self._encode_text(t)) for t in texts]
 
+    def generate_batch(
+            self,
+            prompts: List[Dict[str, Any]],
+            sampling: SamplingConfig,
+    ):
+        stop_token_ids = None
+        eos_id = getattr(self.tokenizer, "eos_token_id", None)
+        if eos_id is not None:
+            stop_token_ids = [int(eos_id)]
+
+        params = self._SamplingParams(
+            temperature=float(sampling.temperature),
+            top_p=float(sampling.top_p),
+            max_tokens=int(sampling.max_tokens),
+            n=int(sampling.n),
+            stop=sampling.stop,
+            stop_token_ids=stop_token_ids,
+        )
+
+        tokenized = self._batch_tokenize_messages(prompts)
+        return self.llm.generate(
+            prompts=tokenized,
+            sampling_params=params,
+            use_tqdm=self.debug,
+        )
+
     # -----------------------------
     # Public API
     # -----------------------------
@@ -191,39 +218,14 @@ class AutoVLLMClient:
             sampling: SamplingConfig,
             output_field: str = "output",
     ) -> List[Dict[str, Any]]:
-        stop_token_ids = None
-        eos_id = getattr(self.tokenizer, "eos_token_id", None)
-        if eos_id is not None:
-            stop_token_ids = [int(eos_id)]
-
-        params = self._SamplingParams(
-            temperature=float(sampling.temperature),
-            top_p=float(sampling.top_p),
-            max_tokens=int(sampling.max_tokens),
-            stop=sampling.stop,
-            stop_token_ids=stop_token_ids,
-        )
-
-        tokenized = self._batch_tokenize_messages(prompts)
-        outputs = self.llm.generate(
-            prompts=tokenized,
-            sampling_params=params,
-            use_tqdm=self.debug,
-        )
-
-        results: List[Dict[str, Any]] = []
-        for i, out in enumerate(outputs):
-            meta = prompts[i].get("metadata", {})
-            comp = out.outputs[0]
-
-            token_ids = getattr(comp, "token_ids", None)
-            if token_ids is not None and hasattr(self.tokenizer, "decode"):
-                text = self.tokenizer.decode(list(token_ids), skip_special_tokens=True)
-            else:
-                text = (getattr(comp, "text", "") or "")
-
-            results.append({**meta, output_field: text.strip()})
-        return results
+        outputs = self.generate_batch(prompts, sampling)
+        return [
+            {
+                **prompt.get("metadata", {}),
+                output_field: out.outputs[0].text.strip() if sampling.n == 1 else [o.text.strip() for o in out.outputs]
+            }
+            for prompt, out in zip(prompts, outputs)
+        ]
 
     def close(self) -> None:
         try:
