@@ -90,6 +90,39 @@ results = client.run_batch(prompts, sampling)
 client.close()
 ```
 
+### Embedding Generation
+
+```python
+from vllm_autoconfig import AutoVLLMEmbedding
+import numpy as np
+
+# Initialize embedding client - only specify model and max length!
+# GPU settings are automatically configured
+client = AutoVLLMEmbedding(
+    model_name="meta-llama/Llama-3.1-8B-Instruct",
+    max_model_len=512,  # Typical for embeddings
+)
+
+# Generate embeddings for texts
+texts = [
+    "The cat sits on the mat",
+    "A feline rests on the carpet",
+    "Dogs are playing in the park",
+]
+
+embeddings = client.embed(texts, normalize=True)
+print(f"Embeddings shape: {embeddings.shape}")  # (3, embedding_dim)
+
+# Compute cosine similarity (embeddings are already normalized)
+def cosine_similarity(a, b):
+    return np.dot(a, b)
+
+sim = cosine_similarity(embeddings[0], embeddings[1])
+print(f"Similarity between 'cat' and 'feline': {sim:.4f}")
+
+client.close()
+```
+
 ## 🛠️ How It Works
 
 1. **GPU Probing**: Detects available GPU memory and capabilities (BF16 support, compute capability)
@@ -143,9 +176,36 @@ SamplingConfig(
 )
 ```
 
-### Methods
+#### Methods
 
 - `run_batch(prompts, sampling, output_field="output")`: Run inference on a batch of prompts
+- `close()`: Clean up resources and free GPU memory
+
+### `AutoVLLMEmbedding`
+
+```python
+AutoVLLMEmbedding(
+    model_name: str,              # HuggingFace model name or local path
+    max_model_len: int = 512,     # Maximum sequence length (embeddings typically need less)
+    pooling_type: str = "MEAN",   # "MEAN", "CLS", or "LAST"
+    normalize: bool = False,      # Normalize in vLLM (default: False, normalized manually)
+    device_index: int = 0,        # GPU device index
+    perf_mode: str = "throughput", # "throughput" or "latency"
+    trust_remote_code: bool = False,
+    enforce_eager: bool = True,   # Better compatibility for embeddings
+    local_files_only: bool = False,
+    cache_plan: bool = True,      # Cache computed plans
+    debug: bool = False,          # Enable debug logging
+    vllm_logging_level: str = None,
+)
+```
+
+**Note:** GPU memory utilization, tensor parallelism, dtype, and other hardware-specific settings are **automatically configured** by the planner based on your GPU and model. You don't need to specify them!
+
+#### Methods
+
+- `embed(texts, normalize=True)`: Generate embeddings for a list of texts, returns numpy array (N, D)
+- `embed_batch(texts, normalize=True)`: Alias for `embed()`
 - `close()`: Clean up resources and free GPU memory
 
 ## 🏗️ Project Structure
@@ -154,14 +214,17 @@ SamplingConfig(
 vllm-autoconfig/
 ├── src/vllm_autoconfig/
 │   ├── __init__.py          # Package exports
-│   ├── client.py            # AutoVLLMClient implementation
+│   ├── client.py            # AutoVLLMClient implementation (text generation)
+│   ├── embedding.py         # AutoVLLMEmbedding implementation (embeddings)
 │   ├── planner.py           # Configuration planning logic
 │   ├── gpu_probe.py         # GPU detection and probing
 │   ├── model_probe.py       # Model analysis utilities
 │   ├── kv_math.py           # KV cache memory calculations
 │   └── cache.py             # Plan caching utilities
 ├── examples/
-│   └── simple_run.py        # Usage examples
+│   ├── simple_run.py        # Text generation example
+│   ├── embedding_simple.py  # Basic embedding example
+│   └── embedding_similarity.py  # Advanced embedding similarity analysis
 └── pyproject.toml
 ```
 
