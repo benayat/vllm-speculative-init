@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vllm-speculative-autoconfig"
+version = "0.2.2"
+description = "Automatic configuration planner for vLLM - Eliminate the guesswork of configuring vLLM by automatically determining optimal parameters"
+readme = "README.md"
+authors = [
+    {name = "Benaya Trabelsi"}
+]
+maintainers = [
+    {name = "Benaya Trabelsi"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "vllm>=0.2.0",
+    "transformers>=4.30.0",
+    "huggingface-hub>=0.16.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/benayat/vllm-speculative-init"
+Repository = "https://github.com/benayat/vllm-speculative-init"
+Issues = "https://github.com/benayat/vllm-speculative-init/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
