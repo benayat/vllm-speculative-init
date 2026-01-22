@@ -4,7 +4,7 @@ import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Literal
-from prompt_utils import convert_prompts_to_chat_messages
+from .prompt_utils import convert_prompts_to_chat_messages
 import torch
 
 from .planner import make_plan, Plan
