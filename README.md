@@ -16,7 +16,7 @@
 ## 📦 Installation
 
 ```bash
-pip install vllm-autoconfig
+pip install vllm-speculative-autoconfig
 ```
 
 **Requirements:**
