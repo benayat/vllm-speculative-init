@@ -4,7 +4,7 @@ import os
 import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Literal
-
+from prompt_utils import convert_prompts_to_chat_messages
 import torch
 
 from .planner import make_plan, Plan
@@ -210,11 +210,7 @@ class AutoVLLMClient:
             use_tqdm=self.debug,
         )
 
-    # -----------------------------
-    # Public API
-    # -----------------------------
-
-    def run_batch(
+    def _run_batch(
             self,
             prompts: List[Dict[str, Any]],
             sampling: SamplingConfig,
@@ -228,6 +224,44 @@ class AutoVLLMClient:
             }
             for prompt, out in zip(prompts, outputs)
         ]
+
+    # -----------------------------
+    # Public API
+    # -----------------------------
+    def run_batch_raw(self, prompts: List[str], sampling: SamplingConfig, output_field:str="output") -> List[str]:
+        """
+        Simple raw string prompt interface.
+
+        Args:
+            prompts: List of prompt strings
+            sampling: SamplingConfig for generation
+            output_field: Field name for output text in result dicts
+
+        Returns:
+            List of generated output strings
+        """
+
+        return self._run_batch(convert_prompts_to_chat_messages(prompts), sampling, output_field)
+
+    def run_batch_chat(self, prompts: List[Dict[str, Any]], sampling: SamplingConfig, output_field:str="output") -> List[Dict[str, Any]]:
+        """
+        Chat message interface.
+
+        Each item in `prompts` should look like:
+          {
+            "messages": [...],      # HF-style chat messages
+            "metadata": {...},      # optional
+          }
+
+        Args:
+            prompts: List of prompt dicts with messages and optional metadata
+            sampling: SamplingConfig for generation
+            output_field: Field name for output text in result dicts
+
+        Returns:
+            List of result dicts with metadata and generated output
+        """
+        return self._run_batch(prompts, sampling, output_field)
 
     def close(self) -> None:
         try:

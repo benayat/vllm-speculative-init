@@ -48,12 +48,17 @@ prompts = [
     }
 ]
 
-# Run inference
-results = client.run_batch(
-    prompts, 
+# Run inference: chat format
+results = client.run_batch_chat(
+    prompts,
     SamplingConfig(max_tokens=100, temperature=0.7)
 )
 
+# Alternatively, run standard text generation
+results = client.run_batch_raw(
+    prompts,
+    SamplingConfig(max_tokens=100, temperature=0.7)
+)
 print(results)
 client.close()
 ```
@@ -86,7 +91,7 @@ sampling = SamplingConfig(
     stop=["###", "\n\n"]
 )
 
-results = client.run_batch(prompts, sampling)
+results = client.run_batch_chat(prompts, sampling)
 client.close()
 ```
 
