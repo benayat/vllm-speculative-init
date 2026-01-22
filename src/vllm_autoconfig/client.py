@@ -240,7 +240,6 @@ class AutoVLLMClient:
         Returns:
             List of generated output strings
         """
-
         return self._run_batch(convert_prompts_to_chat_messages(prompts), sampling, output_field)
 
     def run_batch_chat(self, prompts: List[Dict[str, Any]], sampling: SamplingConfig, output_field:str="output") -> List[Dict[str, Any]]:

@@ -1,4 +1,6 @@
-def _convert_prompt_to_chat_messages(prompt: str, metadata: dict = None) -> list[dict[str, str]]:
+from copy import deepcopy
+
+def _convert_prompt_to_chat_messages(prompt: str, metadata: dict = None) -> dict[str, dict]:
     """
     Convert a plain text prompt into a chat message format.
 
@@ -8,20 +10,26 @@ def _convert_prompt_to_chat_messages(prompt: str, metadata: dict = None) -> list
         prompt (str): The input prompt text.
         metadata (dict): A dictionary containing the metadata of the prompt.
     Returns:
-        list[dict[str, str]]: A list containing a single message dict.
+        dict[str, dict]: A dict with 'messages' list and 'metadata' dict.
     """
-    return {"messages": [{"role": "user", "content": prompt}], "metadata": metadata}
+    # Create a deep copy of metadata to avoid mutations
+    metadata_copy = deepcopy(metadata) if metadata is not None else {}
+
+    return {"messages": [{"role": "user", "content": prompt}], "metadata": metadata_copy}
 
 
-def convert_prompts_to_chat_messages(prompts: list[str]) -> list[list[dict[str, str]]]:
+def convert_prompts_to_chat_messages(prompts: list[str]) -> list[dict[str, dict]]:
     """
     Convert a list of plain text prompts into chat message format.
 
     Each prompt is wrapped as a single user message.
+    Creates deep copies to avoid mutating original data.
 
     Args:
         prompts (list[str]): A list of input prompt texts.
     Returns:
-        list[list[dict[str, str]]]: A list of message lists.
+        list[dict[str, dict]]: A list of message dicts, each with 'messages' and 'metadata'.
     """
-    return [_convert_prompt_to_chat_messages(p) for p in prompts]
+    # Create a deep copy of the prompts list to avoid any mutation issues
+    prompts_copy = deepcopy(prompts)
+    return [_convert_prompt_to_chat_messages(p) for p in prompts_copy]
