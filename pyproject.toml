@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-speculative-autoconfig"
-version = "0.2.4"
+version = "0.2.5"
 description = "Automatic configuration planner for vLLM - Eliminate the guesswork of configuring vLLM by automatically determining optimal parameters"
 readme = "README.md"
 authors = [
