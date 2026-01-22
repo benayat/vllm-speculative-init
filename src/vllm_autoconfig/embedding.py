@@ -54,6 +54,7 @@ class AutoVLLMEmbedding:
             pooling_type: PoolingType = "MEAN",
             normalize: bool = False,  # We'll normalize manually for consistency
             device_index: int = 0,
+            auto_tensor_parallel: bool = True,
             perf_mode: PerfMode = "throughput",
             trust_remote_code: bool = False,
             enforce_eager: bool = True,  # Better compatibility for embeddings
@@ -71,6 +72,7 @@ class AutoVLLMEmbedding:
             pooling_type: Pooling strategy - "MEAN", "CLS", or "LAST" (default: "MEAN")
             normalize: Let vLLM normalize embeddings (default: False, we normalize manually)
             device_index: GPU device index (default: 0)
+            auto_tensor_parallel: Enable automatic multi-GPU tensor parallelism (default: True)
             perf_mode: Performance mode - "throughput" or "latency" (default: "throughput")
             trust_remote_code: Trust remote code for model loading (default: False)
             enforce_eager: Use eager execution mode (default: True for embeddings)
@@ -111,6 +113,7 @@ class AutoVLLMEmbedding:
             model_name=model_name,
             context_len=self.max_model_len,
             device_index=device_index,
+            auto_tensor_parallel=auto_tensor_parallel,
             perf_mode=perf_mode,
             trust_remote_code=trust_remote_code,
             prefer_fp8_kv_cache=False,  # Not applicable for embeddings (no KV cache)

@@ -10,7 +10,7 @@ from typing import Any, Literal, Iterable
 
 from huggingface_hub import snapshot_download
 
-from .gpu_probe import probe_gpu, GpuInfo
+from .gpu_probe import probe_gpu, probe_all_gpus, GpuInfo
 from .model_probe import probe_model, ModelInfo
 from .kv_math import kv_sizing
 from .cache import make_cache_key, load_cached_plan, save_cached_plan
@@ -190,6 +190,7 @@ def make_plan(
         context_len: int,
         *,
         device_index: int = 0,
+        auto_tensor_parallel: bool = True,  # NEW: Enable automatic multi-GPU scaling
         block_size: int = 16,
         gpu_memory_utilization: float = 0.90,
         perf_mode: PerfMode = "throughput",
@@ -211,6 +212,28 @@ def make_plan(
     gpu = probe_gpu(device_index=device_index)
     model = probe_model(model_name, trust_remote_code=trust_remote_code)
     dtype = _pick_weight_dtype(gpu)
+
+    # Multi-GPU detection for tensor parallelism
+    available_gpus = [gpu]
+    tensor_parallel_size = 1
+
+    if auto_tensor_parallel:
+        try:
+            all_gpus = probe_all_gpus()
+            # Only use homogeneous GPUs (same model) for tensor parallelism
+            if len(all_gpus) > 1:
+                gpu_names = set(g.name for g in all_gpus)
+                if len(gpu_names) == 1:
+                    # All GPUs are the same model - can use tensor parallelism
+                    available_gpus = all_gpus
+                    logger.info(f"Detected {len(all_gpus)} homogeneous GPUs: {gpu.name}")
+                else:
+                    logger.warning(
+                        f"Multiple GPUs detected but not homogeneous: {gpu_names}. "
+                        f"Tensor parallelism disabled."
+                    )
+        except Exception as e:
+            logger.warning(f"Could not probe all GPUs for tensor parallelism: {e}")
 
     fp8_ignored_reason: str | None = None
     if prefer_fp8_kv_cache and not gpu.supports_fp8:
@@ -243,18 +266,69 @@ def make_plan(
     compile_overhead = int(0.5 * GiB) if enforce_eager else int(1.5 * GiB)
     reserve_bytes = int(reserve_gib * GiB)
 
-    kv_budget = budget_bytes - weights_bytes - compile_overhead - reserve_bytes
-    kv_budget = int(kv_budget * safety_margin)
-    kv_budget = max(0, kv_budget)
+    # Initial memory calculation to determine if we need tensor parallelism
+    initial_kv_budget = budget_bytes - weights_bytes - compile_overhead - reserve_bytes
+    initial_kv_budget = int(initial_kv_budget * safety_margin)
+    initial_kv_budget = max(0, initial_kv_budget)
+
+    # Check if single GPU is sufficient
+    single_gpu_insufficient = initial_kv_budget < sizing.kv_bytes_per_seq
+
+    if single_gpu_insufficient and len(available_gpus) > 1:
+        # Calculate how many GPUs we need
+        # Total required memory for the model
+        total_required = weights_bytes + sizing.kv_bytes_per_seq + compile_overhead + reserve_bytes
+
+        # Calculate tensor_parallel_size needed
+        tensor_parallel_size = math.ceil(total_required / budget_bytes)
+        tensor_parallel_size = min(tensor_parallel_size, len(available_gpus))
+
+        logger.info(
+            f"Single GPU insufficient: {total_required/GiB:.2f} GiB required "
+            f"vs {budget_bytes/GiB:.2f} GiB available. "
+            f"Using tensor_parallel_size={tensor_parallel_size}"
+        )
+
+        # With tensor parallelism:
+        # - Weights are distributed (sharded) across GPUs
+        # - KV cache scales linearly with number of GPUs (additive)
+        # - Each GPU handles a portion of the model
+
+        # Recalculate with distributed weights
+        weights_bytes_per_gpu = weights_bytes // tensor_parallel_size
+
+        # Total budget across all GPUs
+        total_budget = budget_bytes * tensor_parallel_size
+
+        # Calculate KV budget with distributed weights
+        kv_budget = total_budget - weights_bytes - (compile_overhead * tensor_parallel_size) - (reserve_bytes * tensor_parallel_size)
+        kv_budget = int(kv_budget * safety_margin)
+        kv_budget = max(0, kv_budget)
+    else:
+        # Single GPU is sufficient or auto_tensor_parallel=False
+        kv_budget = initial_kv_budget
+
+        if single_gpu_insufficient:
+            logger.warning(
+                f"Single GPU insufficient but auto_tensor_parallel={auto_tensor_parallel} "
+                f"or only 1 GPU available. This may fail."
+            )
 
     # allocator-friendly: 256 MiB chunks
     kv_cache_memory_bytes = _align_down(kv_budget, 256 * 1024 * 1024)
 
     if kv_cache_memory_bytes < sizing.kv_bytes_per_seq:
         max_tokens_est = int(kv_cache_memory_bytes // max(1, sizing.kv_bytes_per_token))
+        multi_gpu_hint = ""
+        if len(available_gpus) > 1 and tensor_parallel_size == 1:
+            multi_gpu_hint = f"\n  (Note: {len(available_gpus)} GPUs detected but tensor parallelism not enabled/sufficient)"
+        elif tensor_parallel_size > 1:
+            multi_gpu_hint = f"\n  (Already using tensor_parallel_size={tensor_parallel_size})"
+
         raise ValueError(
             f"Static KV budget too small for context_len={context_len}.\n"
             f"GPU={gpu.name} VRAM={total_bytes/GiB:.2f} GiB util={gpu_memory_utilization}\n"
+            f"tensor_parallel_size={tensor_parallel_size} (GPUs available: {len(available_gpus)}){multi_gpu_hint}\n"
             f"weights≈{weights_bytes/GiB:.2f} GiB reserve={reserve_gib:.2f} GiB "
             f"compile≈{compile_overhead/GiB:.2f} GiB safety={safety_margin}\n"
             f"kv_cache≈{kv_cache_memory_bytes/GiB:.2f} GiB, estimated max_tokens≈{max_tokens_est}\n"
@@ -281,6 +355,8 @@ def make_plan(
         "safety_margin": safety_margin,
         "local_files_only": local_files_only,
         "mistral_mode": _is_mistral_repo(model_name),
+        "tensor_parallel_size": tensor_parallel_size,
+        "auto_tensor_parallel": auto_tensor_parallel,
     }
     key = make_cache_key(plan_payload)
 
@@ -320,6 +396,10 @@ def make_plan(
         "seed": 0,
     }
 
+    # Add tensor_parallel_size if using multiple GPUs
+    if tensor_parallel_size > 1:
+        vllm_kwargs["tensor_parallel_size"] = int(tensor_parallel_size)
+
     # Mistral compatibility inferred from repo name
     if _is_mistral_repo(model_name):
         vllm_kwargs.update(
@@ -342,6 +422,13 @@ def make_plan(
         "fp8_enabled": bool(prefer_fp8_kv_cache and gpu.supports_fp8),
         "fp8_ignored_reason": fp8_ignored_reason,
         "mistral_mode": _is_mistral_repo(model_name),
+        "tensor_parallel_size": int(tensor_parallel_size),
+        "gpus_available": len(available_gpus),
+        "auto_tensor_parallel": bool(auto_tensor_parallel),
+        "multi_gpu_reason": (
+            f"Single GPU insufficient: needs {(weights_bytes + sizing.kv_bytes_per_seq + compile_overhead + reserve_bytes)/GiB:.2f} GiB, "
+            f"available {budget_bytes/GiB:.2f} GiB per GPU"
+        ) if tensor_parallel_size > 1 else None,
     }
 
     plan = Plan(

@@ -39,3 +39,21 @@ def probe_gpu(device_index: int = 0) -> GpuInfo:
         is_bf16_supported=bf16,
         supports_fp8=supports_fp8,
     )
+
+
+def probe_all_gpus() -> list[GpuInfo]:
+    """
+    Probe all available GPUs in the system.
+
+    Returns:
+        List of GpuInfo for each available GPU device.
+
+    Raises:
+        RuntimeError: If CUDA is not available.
+    """
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is not available (torch.cuda.is_available() is False).")
+
+    device_count = torch.cuda.device_count()
+    return [probe_gpu(device_index=i) for i in range(device_count)]
+
