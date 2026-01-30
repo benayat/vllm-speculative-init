@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal, Type
 from .prompt_utils import convert_prompts_to_chat_messages
 import torch
 
@@ -39,6 +39,7 @@ class AutoVLLMClient:
             model_name: str,
             context_len: int,
             *,
+            logits_processors: Optional[List[Type]] = None,
             device_index: int = 0,
             auto_tensor_parallel: bool = True,
             perf_mode: PerfMode = "throughput",
@@ -49,6 +50,7 @@ class AutoVLLMClient:
             cache_plan: bool = True,
             debug: bool = False,
             vllm_logging_level: Optional[str] = None,
+            **vllm_kwargs: Any,
     ):
         self.model_name = model_name
         self.context_len = int(context_len)
@@ -64,8 +66,7 @@ class AutoVLLMClient:
         os.environ.setdefault("VLLM_LOGGING_LEVEL", vllm_logging_level.upper())
 
         # Import vLLM after env vars
-        from vllm import LLM, SamplingParams, TokensPrompt  # noqa: WPS433
-
+        from vllm import LLM, SamplingParams, TokensPrompt
         self._LLM = LLM
         self._SamplingParams = SamplingParams
         self._TokensPrompt = TokensPrompt
@@ -94,6 +95,18 @@ class AutoVLLMClient:
 
         # Model-specific knobs (Mistral)
         self._apply_model_specific_overrides(self.plan.vllm_kwargs)
+
+        # Add logits processors if provided
+        if logits_processors is not None:
+            self.plan.vllm_kwargs["logits_processors"] = logits_processors
+            if self.debug:
+                log.debug("Logits processors registered: %s", logits_processors)
+
+        # Apply any additional vLLM kwargs passed by user
+        if vllm_kwargs:
+            self.plan.vllm_kwargs.update(vllm_kwargs)
+            if self.debug:
+                log.debug("Additional vLLM kwargs applied: %s", list(vllm_kwargs.keys()))
 
         log.info("AutoVLLMClient plan cache_key=%s", self.plan.cache_key)
         log.info("Plan notes: %s", self.plan.notes)

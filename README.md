@@ -158,6 +158,7 @@ The `AutoVLLMClient` automatically configures:
 AutoVLLMClient(
     model_name: str,              # HuggingFace model name or local path
     context_len: int,             # Desired context length
+    logits_processors: List[Type] = None, # Custom logits processor classes
     device_index: int = 0,        # GPU device index
     perf_mode: str = "throughput", # "throughput" or "latency"
     trust_remote_code: bool = False,
@@ -167,6 +168,7 @@ AutoVLLMClient(
     cache_plan: bool = True,      # Cache computed plans
     debug: bool = False,          # Enable debug logging
     vllm_logging_level: str = None, # vLLM logging level
+    **vllm_kwargs: Any,           # Additional vLLM engine parameters
 )
 ```
 
@@ -185,6 +187,43 @@ SamplingConfig(
 
 - `run_batch(prompts, sampling, output_field="output")`: Run inference on a batch of prompts
 - `close()`: Clean up resources and free GPU memory
+
+### Logits Processors
+
+AutoVLLMClient supports custom logits processors for advanced use cases like token filtering, boosting, or custom sampling logic.
+
+```python
+from vllm_autoconfig import AutoVLLMClient, ExampleLogitsProcessor
+
+client = AutoVLLMClient(
+    model_name="meta-llama/Llama-3.1-8B-Instruct",
+    context_len=1024,
+    logits_processors=[ExampleLogitsProcessor],  # Pass processor classes
+)
+```
+
+**Key Points:**
+- Pass processor **classes** (not instances) in a list
+- vLLM automatically instantiates them with proper configuration
+- Processors receive `vllm_config`, `device`, and `is_pin_memory` during init
+- Configure processors via environment variables
+- See `examples/logits_processor_example.py` for a complete example
+
+### Additional vLLM Kwargs
+
+You can pass additional keyword arguments directly to the vLLM engine:
+
+```python
+client = AutoVLLMClient(
+    model_name="meta-llama/Llama-3.1-8B-Instruct",
+    context_len=1024,
+    # Any additional vLLM-specific parameters
+    swap_space=4,
+    disable_custom_all_reduce=True,
+)
+```
+
+These kwargs are passed through to vLLM's LLM initialization.
 
 ### `AutoVLLMEmbedding`
 
