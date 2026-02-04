@@ -19,6 +19,18 @@ class SamplingConfig:
     max_tokens: int = 32
     n: int = 1
     stop: Optional[List[str]] = None
+    _extra_sampling_params: Dict[str, Any] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def create(cls, **kwargs):
+        """Create SamplingConfig with any additional vLLM SamplingParams kwargs."""
+        known_fields = {f.name for f in cls.__dataclass_fields__.values() if not f.name.startswith('_')}
+        init_kwargs = {k: v for k, v in kwargs.items() if k in known_fields}
+        extra_kwargs = {k: v for k, v in kwargs.items() if k not in known_fields}
+
+        instance = cls(**init_kwargs)
+        instance._extra_sampling_params = extra_kwargs
+        return instance
 
 
 def _configure_python_logging(debug: bool) -> None:
@@ -214,6 +226,7 @@ class AutoVLLMClient:
             n=int(sampling.n),
             stop=sampling.stop,
             stop_token_ids=stop_token_ids,
+            **sampling._extra_sampling_params
         )
 
         tokenized = self._batch_tokenize_messages(prompts)
