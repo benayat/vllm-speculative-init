@@ -233,7 +233,7 @@ class AutoVLLMClient:
         return self.llm.generate(
             prompts=tokenized,
             sampling_params=params,
-            use_tqdm=self.debug,
+            use_tqdm=True,
         )
 
     def _run_batch(
