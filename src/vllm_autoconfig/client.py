@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Literal, Type
 from .prompt_utils import convert_prompts_to_chat_messages
 import torch
