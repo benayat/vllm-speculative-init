@@ -425,7 +425,6 @@ def make_plan(
         "tensor_parallel_size": int(tensor_parallel_size),
         "gpus_available": len(available_gpus),
         "auto_tensor_parallel": bool(auto_tensor_parallel),
-        "gpu_memory_utilization": float(gpu_memory_utilization),
         "multi_gpu_reason": (
             f"Single GPU insufficient: needs {(weights_bytes + sizing.kv_bytes_per_seq + compile_overhead + reserve_bytes)/GiB:.2f} GiB, "
             f"available {budget_bytes/GiB:.2f} GiB per GPU"
