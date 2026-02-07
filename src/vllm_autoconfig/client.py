@@ -75,11 +75,15 @@ class AutoVLLMClient:
         self._SamplingParams = SamplingParams
         self._TokensPrompt = TokensPrompt
 
+        # Extract planner-specific kwargs from vllm_kwargs
+        gpu_memory_utilization = vllm_kwargs.pop('gpu_memory_utilization', 0.90)
+
         self.plan: Plan = make_plan(
             model_name=model_name,
             context_len=self.context_len,
             device_index=device_index,
             auto_tensor_parallel=auto_tensor_parallel,
+            gpu_memory_utilization=gpu_memory_utilization,
             perf_mode=perf_mode,
             trust_remote_code=trust_remote_code,
             prefer_fp8_kv_cache=prefer_fp8_kv_cache,
