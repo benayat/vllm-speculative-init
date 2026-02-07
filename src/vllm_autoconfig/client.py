@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import logging
-from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Literal, Type
 from .prompt_utils import convert_prompts_to_chat_messages
 import torch
@@ -12,25 +11,18 @@ from .planner import make_plan, Plan
 PerfMode = Literal["throughput", "latency"]
 
 
-@dataclass
 class SamplingConfig:
-    temperature: float = 0.0
-    top_p: float = 1.0
-    max_tokens: int = 32
-    n: int = 1
-    stop: Optional[List[str]] = None
-    _extra_sampling_params: Dict[str, Any] = field(default_factory=dict, repr=False)
+    """Sampling configuration with support for extra vLLM SamplingParams kwargs."""
 
-    @classmethod
-    def create(cls, **kwargs):
-        """Create SamplingConfig with any additional vLLM SamplingParams kwargs."""
-        known_fields = {f.name for f in cls.__dataclass_fields__.values() if not f.name.startswith('_')}
-        init_kwargs = {k: v for k, v in kwargs.items() if k in known_fields}
-        extra_kwargs = {k: v for k, v in kwargs.items() if k not in known_fields}
+    def __init__(self, **kwargs):
+        known_fields = {'temperature', 'top_p', 'max_tokens', 'n', 'stop'}
 
-        instance = cls(**init_kwargs)
-        instance._extra_sampling_params = extra_kwargs
-        return instance
+        self.temperature = kwargs.get('temperature', 0.0)
+        self.top_p = kwargs.get('top_p', 1.0)
+        self.max_tokens = kwargs.get('max_tokens', 32)
+        self.n = kwargs.get('n', 1)
+        self.stop = kwargs.get('stop', None)
+        self._extra_sampling_params = {k: v for k, v in kwargs.items() if k not in known_fields}
 
 
 def _configure_python_logging(debug: bool) -> None:

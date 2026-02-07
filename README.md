@@ -180,6 +180,7 @@ SamplingConfig(
     top_p: float = 1.0,           # Nucleus sampling threshold
     max_tokens: int = 32,         # Maximum tokens to generate
     stop: List[str] = None,       # Stop sequences
+    extra_args: Dict[str, Any] = None, # Extra arguments for vLLM (e.g., gate_enabled)
 )
 ```
 
