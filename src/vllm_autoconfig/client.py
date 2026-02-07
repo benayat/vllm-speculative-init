@@ -110,6 +110,9 @@ class AutoVLLMClient:
             if self.debug:
                 log.debug("Logits processors registered: %s", logits_processors)
 
+            if gpu_memory_utilization is not None:
+                self.plan.vllm_kwargs["gpu_memory_utilization"] = gpu_memory_utilization
+
         # Apply any additional vLLM kwargs passed by user
         if vllm_kwargs:
             self.plan.vllm_kwargs.update(vllm_kwargs)
