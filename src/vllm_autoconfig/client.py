@@ -77,7 +77,7 @@ class AutoVLLMClient:
 
         # Extract planner-specific kwargs from vllm_kwargs
         gpu_memory_utilization = vllm_kwargs.pop('gpu_memory_utilization', 0.90)
-
+        reserve_gib = vllm_kwargs.pop('reserve_gib', 2.5)
         self.plan: Plan = make_plan(
             model_name=model_name,
             context_len=self.context_len,
@@ -90,6 +90,7 @@ class AutoVLLMClient:
             enforce_eager=enforce_eager,
             local_files_only=local_files_only,
             cache=cache_plan,
+            reserve_gib=reserve_gib,
         )
 
         # Debug: let vLLM print more internal stats
