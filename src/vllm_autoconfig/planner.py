@@ -339,8 +339,11 @@ def make_plan(
     cap = 4 if perf_mode == "latency" else 128
     max_num_seqs = min(cap, int(max_num_seqs_by_kv))
 
-    max_num_batched_tokens = min(32768, max(8192, 16 * min(context_len, 2048)))
-
+    # max_num_batched_tokens = min(32768, max(8192, 16 * min(context_len, 2048)))
+    max_num_batched_tokens = max(
+        32768,
+        int(max_num_seqs_by_kv * context_len * 0.8)  # 80% of KV capacity
+    )
     plan_payload = {
         "model_name": model_name,
         "context_len": context_len,
